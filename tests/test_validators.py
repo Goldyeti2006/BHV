@@ -1,13 +1,8 @@
 import unittest
-import sys
-import os
 
 # ==========================================
 # 1. PATH SETUP & IMPORTS
-# ==========================================
-# This line helps Python find your bhv folder from the root
-sys.path.append(os.getcwd())
-
+# =========================================
 # Import your actual functions from the project structure
 from bhv.utils.validators import validate_file_size, allowed_file
 
