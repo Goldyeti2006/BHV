@@ -1,5 +1,5 @@
 import os
-import uuid  # Moved to top as per PEP 8 guidelines
+import uuid
 from pathlib import Path
 from werkzeug.utils import secure_filename
 
@@ -11,14 +11,10 @@ def allowed_file(filename, allowed_extensions):
     extension = filename.rsplit('.', 1)[1].lower()
     return extension in allowed_extensions
 
-def validate_image_content(file_path):
-    """Simple validation to check if the file exists on disk."""
-    return 'jpeg' if os.path.exists(file_path) else None
-
 def sanitize_filename(filename):
     """Removes unsafe characters and limits filename length."""
     filename = secure_filename(filename)
-    filename = filename.replace('/', '').replace('\\', '')
+    # Redundant replace line removed here
     name, ext = os.path.splitext(filename)
     if len(name) > 100:
         name = name[:100]

@@ -9,7 +9,11 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
 from wtforms import StringField, TextAreaField, SubmitField
 from wtforms.validators import DataRequired, Length, Optional
-
+from dotenv import load_dotenv # New import
+import click
+from flask.cli import with_appcontext
+from bhv.models import db, User
+load_dotenv()
 # SECURITY & REFACTOR FIX: Import from centralized utilities
 from bhv.utils.validators import (
     allowed_file, 
@@ -17,7 +21,6 @@ from bhv.utils.validators import (
     generate_unique_filename, 
     validate_file_size
 )
-
 # Database setup
 db = SQLAlchemy()
 
@@ -68,6 +71,23 @@ class ImageUploadForm(FlaskForm):
     ])
     submit = SubmitField('Upload Image')
 
+@click.command("create-admin")
+@click.argument("password")
+@with_appcontext
+def create_admin(password):
+    """Manually create an admin user from the terminal."""
+    from bhv.models import User, db
+        
+    if User.query.filter_by(username='admin').first():
+        print("Admin user already exists.")
+        return
+
+    admin = User(username='admin', email='admin@bhv.org')
+    admin.set_password(password)
+    db.session.add(admin)
+    db.session.commit()
+    print("Admin user created successfully!")
+
 # App factory
 def create_app():
     BASE_DIR = Path(__file__).parent.parent
@@ -75,9 +95,10 @@ def create_app():
     app = Flask(__name__, 
                 static_folder=str(BASE_DIR / 'static'),
                 static_url_path='/static')
-    
     # SECURITY FIX: Load SECRET_KEY from environment variable
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    if not app.config['SECRET_KEY']:
+        raise ValueError("No SECRET_KEY set for Flask application. Did you forget to set the environment variable?")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{BASE_DIR / "bhv.db"}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = BASE_DIR / 'static' / 'uploads'
@@ -86,16 +107,11 @@ def create_app():
     
     db.init_app(app)
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    
+    app.cli.add_command(create_admin)
     with app.app_context():
         db.create_all()
         # Note: Default user logic for initial setup
-        if User.query.count() == 0:
-            default_user = User(username='default', email='default@bhv.org')
-            default_user.set_password('changeme123')
-            db.session.add(default_user)
-            db.session.commit()
-    
+        
     @app.route('/')
     def index():
         return render_template('index.html')
